@@ -4,7 +4,6 @@ const User = require('../models/user');
 const Product = require('../models/product');
 const Destination = require('../models/destination');
 const Order = require('../models/order');
-const getCurrentDateTime = require('../util/dateTime');
 
 exports.signup = async (req, res, next) => {
   try {
@@ -197,7 +196,7 @@ exports.getOrders = async (req, res, next) => {
 
 exports.createOrder = async (req, res, next) => {
   try {
-    const { destinationId, address } = req.body;
+    const { destinationId, address, createdAt } = req.body;
     const user = await User.findById(req.userId).populate('cart.products.product');
     const destination = await Destination.findById(destinationId);
     if (!destination || !user) {
@@ -239,7 +238,7 @@ exports.createOrder = async (req, res, next) => {
       totalPrice: productsPrice + shippingPrice,
       user: req.userId,
       cancelExpirationDate: Date.now() + 12 * 60 * 60 * 1000,
-      createdAt: getCurrentDateTime()
+      createdAt
     });
 
     user.cart = {
