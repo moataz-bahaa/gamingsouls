@@ -220,11 +220,11 @@ exports.createOrder = async (req, res, next) => {
       };
     });
     // each product is 1/2 kg
-    const totalWeight = productsCount / 2;
+    const totalWeight = Math.ceil(productsCount / 2);
     let shippingPrice = destination.shippingPrice;
     if (destination.destinationType === 'Upper Egypt') {
       shippingPrice += 5 * (totalWeight - 1);
-      shippingPrice += 0.14 * shippingPrice;
+      shippingPrice += Math.ceil(0.14 * shippingPrice);
       shippingPrice += 5;
     }
     const order = await Order.create({
