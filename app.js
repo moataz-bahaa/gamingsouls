@@ -16,7 +16,20 @@ const app = express();
 // middlewars
 app.use(express.json());
 app.use(express.static(path.join(rootDir, 'public', 'client', 'build')));
-app.use(express.static(path.join(rootDir, 'public', 'admin', 'build')));
+app.use(
+  [
+    '/adminn',
+    '/admin/login',
+    '/admin/users',
+    '/admin/user/:id',
+    '/admin/products',
+    '/admin/product/:id',
+    '/admin/orders',
+    '/admin/order/:id',
+    '/admin/destinations',
+  ],
+  express.static(path.join(rootDir, 'public', 'admin', 'build'))
+);
 app.use(corsMiddleware);
 
 // routes
