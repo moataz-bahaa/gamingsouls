@@ -74,7 +74,13 @@ exports.login = async (req, res, next) => {
 exports.getCart = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId).populate('cart.products.product');
-    res.json(user.cart);
+    const totalPrice = user.cart.products.reduce((total, cur) => {
+      return total + cur.product.price * cur.amount;
+    }, 0);
+    res.json({
+      ...user.cart,
+      totalPrice,
+    });
   } catch (err) {
     next(err);
   }
@@ -104,13 +110,9 @@ exports.addProductToCart = async (req, res, next) => {
       (p) => p.product.toString() === productId
     );
     if (productIndex >= 0) {
-      user.cart.totalPrice -= user.cart.products[productIndex].amount * product.price;
       user.cart.products[productIndex].amount = amount;
-      user.cart.totalPrice += user.cart.products[productIndex].amount * product.price;
-      // console.log(user.cart.products[productIndex]);
     } else {
       user.cart.products.push({ product: productId, amount });
-      user.cart.totalPrice += amount * product.price;
     }
     await user.save();
     res.json({
@@ -126,18 +128,16 @@ exports.deleteProductFromCart = async (req, res, next) => {
   try {
     const { productId } = req.body;
     const user = await User.findById(req.userId).populate('cart.products.product');
-    const productIndex = user.cart.products.findIndex(
-      (p) => p.product._id.toString() === productId
-    );
-    const price = user.cart.products[productIndex].product.price;
-    user.cart.totalPrice -= user.cart.products[productIndex].amount * price;
     user.cart.products = user.cart.products.filter(
       (p) => p.product._id.toString() !== productId
     );
     await user.save();
+    const totalPrice = user.cart.products.reduce((total, cur) => {
+      return total + cur.product.price * cur.amount;
+    }, 0);
     res.json({
       message: 'product deleted successfully',
-      cart: user.cart,
+      cart: { ...user.cart, totalPrice },
     });
   } catch (err) {
     next(err);
@@ -161,14 +161,17 @@ exports.editCartProductAmount = async (req, res, next) => {
       err.statusCode = 404;
       throw err;
     }
-    const price = user.cart.products[productIndex].product.price;
-    user.cart.totalPrice -= user.cart.products[productIndex].amount * price;
     user.cart.products[productIndex].amount = amount;
-    user.cart.totalPrice += user.cart.products[productIndex].amount * price;
     await user.save();
+    const totalPrice = user.cart.products.reduce((total, cur) => {
+      return total + cur.product.price * cur.amount;
+    }, 0);
     res.json({
       message: 'product edited successfully',
-      cart: user.cart,
+      cart: {
+        ...user.cart,
+        totalPrice,
+      },
     });
   } catch (err) {
     next(err);
@@ -187,7 +190,9 @@ exports.getDestinations = async (req, res, next) => {
 // orders
 exports.getOrders = async (req, res, next) => {
   try {
-    const orders = await Order.find({ user: req.userId }).sort({ cancelExpirationDate: -1 });
+    const orders = await Order.find({ user: req.userId }).sort({
+      cancelExpirationDate: -1,
+    });
     res.json(orders);
   } catch (err) {
     next(err);
@@ -238,7 +243,7 @@ exports.createOrder = async (req, res, next) => {
       totalPrice: productsPrice + shippingPrice,
       user: req.userId,
       cancelExpirationDate: Date.now() + 12 * 60 * 60 * 1000,
-      createdAt
+      createdAt,
     });
 
     user.cart = {
@@ -271,7 +276,9 @@ exports.cancelOrder = async (req, res, next) => {
       throw err;
     }
     if (order.isApproved) {
-      const err = new Error(`sorry your order has been approved by the admin, you can't cancel it`);
+      const err = new Error(
+        `sorry your order has been approved by the admin, you can't cancel it`
+      );
       err.statusCode = 401;
       throw err;
     }
